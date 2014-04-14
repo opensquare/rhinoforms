@@ -65,7 +65,7 @@ public class FormParserTest {
 
 	@Test
 	public void testAllInputTypes() throws Exception {
-		this.formFlow = formFlowFactory.createFlow("test-flow1.js", "<myData><terms>disagree</terms><title>Miss</title><canWalkOnHands>true</canWalkOnHands></myData>");
+		this.formFlow = formFlowFactory.createFlow("test-flow1.js", "<myData><terms>disagree</terms><title>Don't know</title><canWalkOnHands>true</canWalkOnHands></myData>");
 		this.formFlow.navigateToFirstForm(documentHelper);
 		
 		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -82,7 +82,7 @@ public class FormParserTest {
 		Assert.assertEquals("additionalInfo", inputPojos.get(5).getName());
 		String parsedFormHtml = new String(byteArrayOutputStream.toByteArray());
 		Assert.assertTrue(parsedFormHtml.contains("type=\"radio\" name=\"terms\" value=\"disagree\" checked=\"checked\""));
-		Assert.assertTrue(parsedFormHtml.contains("<option selected=\"selected\">Miss</option>"));
+		Assert.assertTrue(parsedFormHtml.contains("<option selected=\"selected\">Don't know</option>"));
 		Assert.assertTrue(parsedFormHtml.contains("type=\"checkbox\" name=\"canWalkOnHands\" checked=\"checked\""));
 	}
 	

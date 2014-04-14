@@ -78,52 +78,52 @@ public class FormParser {
 		try {
 			TagNode formHtml = htmlCleaner.clean(formStream);
 			String flowID = formFlow.getId();
-	
+
 			Document dataDocument = formFlow.getDataDocument();
 			String docBase = formFlow.getCurrentDocBase();
 			String currentPath = formFlow.getCurrentPath();
 			String formId = formFlow.getCurrentFormId();
 			Map<String, FlowAction> currentActions = formFlow.getCurrentActions();
-	
+
 			// Process rf.include
 			processIncludes(formHtml, formFlow);
-	
+
 			// Add debugBar
 			if (showDebugBar && !suppressDebugBar) {
 				addDebugBar(formHtml);
 			}
-	
+
 			// Process rf.forEach statements
 			valueInjector.processForEachStatements(formFlow.getProperties(), formHtml, dataDocument, docBase);
-			
+
 			valueInjector.processCurlyBrackets(dataDocument, formHtml, formFlow.getProperties(), docBase);
-	
+
 			// Process first Rhinoforms form in doc
 			Object[] rfFormNodes = formHtml.evaluateXPath("//form[@" + Constants.RHINOFORMS_FLAG + "='true']");
 			if (rfFormNodes.length > 0) {
 				logger.debug("{} forms found.", rfFormNodes.length);
 				TagNode formNode = (TagNode) rfFormNodes[0];
-				
+
 				perpetuateIncludeIfStatementsToInputs(formHtml);
-	
+
 				// Process dynamic select elements
 				processSelectSource(formNode, formFlow);
-	
+
 				// Process range select elements
 				processSelectRange(formNode, masterScope);
-	
+
 				// Record input fields
 				recordInputFieldsPushInValues(formNode, formFlow, dataDocument, docBase);
-	
+
 				// Process Actions
 				processActions(currentActions, formNode, formFlow.getCurrentFormId());
-	
+
 				// Process auto-complete fields, replace source with proxy path
 				processInputSourceFields(formNode, currentPath, formFlow);
-	
+
 				// Add flowId as hidden field
 				addFlowId(flowID, formNode);
-	
+
 				// Add the form id as a class on the form
 				formNode.setAttribute(Constants.CLASS, addClass(formNode.getAttributeByName(Constants.CLASS), formId));
 				formNode.setAttribute(Constants.FORM_ID_ATTR, formId);
@@ -133,7 +133,7 @@ public class FormParser {
 			} else {
 				logger.warn("No forms found");
 			}
-	
+
 			// Write out processed document
 			new SimpleHtmlSerializer(htmlCleaner.getProperties()).write(formHtml, writer, "utf-8");
 		} catch (IOException e) {
@@ -166,7 +166,7 @@ public class FormParser {
 					TagNode includeHtml = htmlCleaner.clean(resourceAsStream);
 					TagNode body = includeHtml.findElementByName("body", false);
 					doProcessIncludes(body, depth + 1, formFlow);
-	
+
 					@SuppressWarnings("unchecked")
 					List<HtmlNode> bodyChildren = body.getChildren();
 					Collections.reverse(bodyChildren);
@@ -224,7 +224,7 @@ public class FormParser {
 			dynamicSelectNode.removeAttribute(Constants.SELECT_SOURCE_ATTR);
 			dynamicSelectNode.removeAttribute(Constants.SELECT_PRESELECT_FIRST_OPTION_ATTR);
 			logger.debug("Found dynamicSelectNode name:{}, source:{}", name, source);
-	
+
 			List<SelectOptionPojo> options = selectOptionHelper.loadOptions(source);
 			if (!"true".equals(preselectFirstOption)) {
 				options.add(0, new SelectOptionPojo("-- Please Select --", ""));
@@ -339,9 +339,26 @@ public class FormParser {
 								inputTagNode.setAttribute(Constants.CHECKED_ATTR, Constants.CHECKED_ATTR);
 							}
 						} else if (type.equals(SELECT)) {
-							Object[] nodes = inputTagNode.evaluateXPath("option[@value=\"" + inputValue + "\"]");
-							if (nodes.length == 0) {
-								nodes = inputTagNode.evaluateXPath("option[text()=\"" + inputValue + "\"]");
+							Object[] nodes = new Object[0];
+							// Ugly workaround because evaluateXPath doesn't seem to be able to handle any xpath that contains ' even though it's a valid xpath
+							if (inputValue.indexOf("'") > -1) {
+								for (TagNode option : inputTagNode.getChildTags()) {
+									if (option.hasAttribute("value") && option.getAttributeByName("value").equals(inputValue)) {
+										nodes = new Object[]{option};
+									}
+								}
+								if (nodes.length == 0) {
+									for (TagNode option : inputTagNode.getChildTags()) {
+										if (option.getText().toString().equals(inputValue)) {
+											nodes = new Object[]{option};
+										}
+									}
+								}
+							} else { //
+								nodes = inputTagNode.evaluateXPath("option[@value=\"" + inputValue + "\"]");
+								if (nodes.length == 0) {
+									nodes = inputTagNode.evaluateXPath("option[text()=\"" + inputValue + "\"]");
+								}
 							}
 							if (nodes.length > 0) {
 								((TagNode) nodes[0]).setAttribute(Constants.SELECTED_ATTR, "selected");
@@ -375,7 +392,7 @@ public class FormParser {
 				rangeSelectNode.removeAttribute(Constants.SELECT_RANGE_END_ATTR);
 				rangeSelectNode.removeAttribute(Constants.SELECT_PRESELECT_FIRST_OPTION_ATTR);
 
-				logger.debug("Found rangeSelectNode name:{}, rangeStart:{}, rangeEnd:{}", new String[] { name, rangeStart, rangeEnd });
+				logger.debug("Found rangeSelectNode name:{}, rangeStart:{}, rangeEnd:{}", new String[]{name, rangeStart, rangeEnd});
 				boolean rangeStartValid = rangeStart != null && !rangeStart.isEmpty();
 				boolean rangeEndValid = rangeEnd != null && !rangeEnd.isEmpty();
 				if (rangeStartValid && rangeEndValid) {
@@ -383,8 +400,8 @@ public class FormParser {
 							Constants.SELECT_RANGE_START_ATTR, 1, null);
 					Object rangeEndResult = context.evaluateString(workingScope, "{" + rangeEnd + "}", Constants.SELECT_RANGE_END_ATTR,
 							1, null);
-					logger.debug("RangeSelectNode name:{}, rangeStartResult:{}, rangeEndResult:{}", new Object[] { name,
-							rangeStartResult, rangeEndResult });
+					logger.debug("RangeSelectNode name:{}, rangeStartResult:{}, rangeEndResult:{}", new Object[]{name,
+						rangeStartResult, rangeEndResult});
 
 					double rangeStartResultNumber = Context.toNumber(rangeStartResult);
 					double rangeEndResultNumber = Context.toNumber(rangeEndResult);
@@ -470,9 +487,9 @@ public class FormParser {
 		existingClassString += classToAdd;
 		return existingClassString;
 	}
-	
+
 	public void setShowDebugBar(boolean showDebugBar) {
 		this.showDebugBar = showDebugBar;
 	}
-	
+
 }
